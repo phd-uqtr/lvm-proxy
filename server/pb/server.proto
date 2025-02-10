@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+option go_package = "phd.uqtr.ca/lvm-proxy/server";
+package server;
+
+
+service VolumeGroup {
+    rpc GetVolumeGroupNames(GetVolumeGroupNamesRequest) returns (GetVolumeGroupNamesResponse) {}
+}
+
+message GetVolumeGroupNamesRequest {
+
+}
+message GetVolumeGroupNamesResponse {
+    repeated string volume_groups = 1;
+}
+
+
+service Volume {
+    rpc CreateVolume(CreateLVMVolumeRequest) returns (CreateLVMVolumeResponse) {}
+    rpc GetVolumes(GetVolumesRequest) returns (GetVolumesResponse) {}
+    // rpc DeleteVolume(DeleteLVMVolumeRequest) returns (DeleteLVMVolumeResponse) {}
+}
+
+enum Status {
+    UNKNOWN = 0;
+    SUCCESS = 1;
+    FAILURE = 2;
+}
+
+message CreateLVMVolumeRequest {
+    string volume_name = 1;
+    string volume_group = 2;
+    int64 size = 3;
+}
+
+message CreateLVMVolumeResponse {
+    string volume_name = 1;
+    string volume_path = 2;
+    string brick_path  = 3;
+    Status status = 4;
+    string message = 5;
+
+}
+message GetVolumesRequest {
+    string volume_group = 1;
+}
+message GetVolumesResponse {
+    repeated CreateLVMVolumeResponse volumes = 1;
+    Status status = 2;
+    string message = 3;
+}
