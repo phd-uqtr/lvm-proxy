@@ -9,3 +9,13 @@ type LvObjectProps struct {
 	DeviceAbsolutionPath string
 	BrickPath            string
 }
+
+type VolumeInfo struct {
+	VolumeGroupName    string
+	VolumeRelativePath string
+	VolumeAbsolutePath string
+	BrickPath          string
+	Size               uint64
+	FreeSize           uint64
+	AllocatedSize      uint64
+}

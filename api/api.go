@@ -3,16 +3,35 @@ package api
 import (
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 
+	"golang.org/x/sys/unix"
 	"phd.uqtr.ca/lvm-proxy/lvm"
 )
 
 const ONE_GB = 1024 * 1024
 
+// TODO: We might extend this to vg with multiple base storages
 type LvmProxyApi struct {
 	BaseStorageDevice string // path to base storage used for creating logical volumes on to of it
 	MountRoot         string
+}
+
+func (lvmApi *LvmProxyApi) GetVolumeMountPath(vgName, lvName string) string {
+	return path.Join(lvmApi.MountRoot, vgName, lvName)
+}
+
+func (lvmApi *LvmProxyApi) GetVolumeGroupInfo(vg string) VolumeGroupInfo {
+	vgo := &lvm.VgObject{}
+	vgo.Vgt = lvm.VgOpen(vg, "r")
+	defer vgo.Close()
+	vgInfo := VolumeGroupInfo{
+		Name:     vg,
+		Size:     uint64(vgo.GetSize()),
+		FreeSize: uint64(vgo.GetFreeSize()),
+	}
+	return vgInfo
 }
 
 func (lvmApi *LvmProxyApi) GetVolumeGroupNames() []string {
@@ -30,6 +49,7 @@ func (lvmApi *LvmProxyApi) GetVolumes(vgName string) ([]LvObjectProps, error) {
 	// Open volume
 	vgo := &lvm.VgObject{}
 	vgo.Vgt = lvm.VgOpen(vgName, "r")
+	defer vgo.Close()
 	if vgo.Vgt == nil {
 		return nil, fmt.Errorf("no volume of name: %s", vgName)
 	}
@@ -65,6 +85,7 @@ func (lvmApi *LvmProxyApi) CreateVolume(volName string, vgName string, volSize i
 	// Create a VG object
 	vgo := &lvm.VgObject{}
 	vgo.Vgt = lvm.VgOpen(vgName, "w")
+	defer vgo.Close()
 
 	// Create a LV object
 	lv := &lvm.LvObject{}
@@ -112,12 +133,69 @@ func (lvmApi *LvmProxyApi) CreateVolume(volName string, vgName string, volSize i
 		VolumeGroupName:      vgName,
 		BrickPath:            brickPath,
 	}
-	// return volume
+
 	return props, nil
 }
 
-func (lvmApi *LvmProxyApi) DeleteVolume(lvo *lvm.LvObject) error {
-	// TODO: Add error wrapping if needed
+func (lvmApi *LvmProxyApi) GetVolumeInfo(vgName, lvName string) *VolumeInfo {
+	// TODO: Check if volume and volume groups exist
+	lvPath := path.Join("/dev/mapper", fmt.Sprintf("%s-%s", vgName, lvName))
+	lvAbsPath, err := os.Readlink(lvPath)
+	if err != nil {
+		lvAbsPath = ""
+	}
+	mountPath := filepath.Join(lvmApi.MountRoot, vgName, lvName)
+	brickPath := path.Join(mountPath, "brick")
+	var lvStats unix.Statfs_t
+	err = unix.Statfs(lvPath, &lvStats)
+	if err != nil {
+		return nil
+	}
+	total := lvStats.Blocks * uint64(lvStats.Bsize)
+	available := lvStats.Bavail * uint64(lvStats.Bsize)
+	used := total - (lvStats.Bfree * uint64(lvStats.Bsize))
+	return &VolumeInfo{
+		VolumeGroupName:    vgName,
+		VolumeRelativePath: lvPath,
+		VolumeAbsolutePath: lvAbsPath,
+		BrickPath:          brickPath,
+		Size:               total,
+		FreeSize:           available,
+		AllocatedSize:      used,
+	}
+}
+
+func (lvmApi *LvmProxyApi) DeleteVolume(vgName, lvName string) error {
+	// Check if vg exists
+	exists, vgo := lvm.VgExists(vgName, "w")
+	if !exists {
+		return fmt.Errorf("vg does not exist")
+	}
+	defer vgo.Close()
+	// Check if lv exists
+	lvo, err := vgo.LvFromName(lvName)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// Check if lv is mounted
+	lvPath := path.Join("/dev/mapper", fmt.Sprintf("%s-%s", vgName, lvName))
+	isMounted := IsVolumeMounted(lvPath)
+	if !isMounted {
+		return lvo.Remove()
+	}
+	// unmout first and remove folder\
+	mountPath := lvmApi.GetVolumeMountPath(vgName, lvName)
+	err = Unmount(mountPath)
+	if err != nil {
+		return err
+	}
+	err = os.RemoveAll(mountPath)
+	if err != nil {
+		return fmt.Errorf("failed to remove %s: %v", mountPath, err)
+	}
+	// Delete volume
 	return lvo.Remove()
 }
 

@@ -4,11 +4,11 @@ gen:
     server/pb/server.proto
 
 build_all:
-	go build -o main main.go
+	go build -o ./bin/main main.go
 run: build_all
-	sudo ./main
+	sudo ./bin/main
 
 
 clean:
-	rm main
+	rm ./bin/main
 

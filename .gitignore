@@ -4,3 +4,4 @@ example
 tmp-ref*
 test.go
 testrun
+bin/*

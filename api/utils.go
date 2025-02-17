@@ -1,12 +1,15 @@
 package api
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"golang.org/x/sys/unix"
 	"phd.uqtr.ca/lvm-proxy/config"
 )
 
@@ -84,5 +87,39 @@ func InitializeLVMOnDevice(device string) error {
 		return fmt.Errorf("error creating vg on device:: %v", err)
 	}
 
+	return nil
+}
+
+func IsVolumeMounted(device string) bool {
+	// var stat unix.Statfs_t
+	// err := unix.Statfs(path, &stat)
+	// return err == nil
+	file, err := os.Open("/proc/mounts")
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		fields := strings.Fields(scanner.Text())
+		if len(fields) > 1 && fields[0] == device {
+			return true
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false
+	}
+
+	return false
+}
+
+func Unmount(mountPoint string) error {
+	err := unix.Unmount(mountPoint, 0)
+	if err != nil {
+		return fmt.Errorf("failed to unmount %s: %v", mountPoint, err)
+	}
+	fmt.Printf("Successfully unmounted %s\n", mountPoint)
 	return nil
 }

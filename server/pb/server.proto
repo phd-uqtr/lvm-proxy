@@ -6,6 +6,8 @@ package server;
 
 service VolumeGroup {
     rpc GetVolumeGroupNames(GetVolumeGroupNamesRequest) returns (GetVolumeGroupNamesResponse) {}
+    rpc GetVolumeGroupInfo(GetVolumeGroupInfoRequest) returns (GetVolumeGroupInfoResponse) {}
+
 }
 
 message GetVolumeGroupNamesRequest {
@@ -15,11 +17,22 @@ message GetVolumeGroupNamesResponse {
     repeated string volume_groups = 1;
 }
 
+message GetVolumeGroupInfoRequest {
+    string volume_group = 1;
+}
+
+message GetVolumeGroupInfoResponse {
+    string name = 1;
+    uint64 size = 2;
+    uint64 free_size = 3;
+}
+
 
 service Volume {
     rpc CreateVolume(CreateLVMVolumeRequest) returns (CreateLVMVolumeResponse) {}
     rpc GetVolumes(GetVolumesRequest) returns (GetVolumesResponse) {}
-    // rpc DeleteVolume(DeleteLVMVolumeRequest) returns (DeleteLVMVolumeResponse) {}
+    rpc GetVolumeInfo(GetVolumeInfoRequest) returns (GetVolumeInfoResponse) {}
+    rpc DeleteVolume(DeleteVolumeRequest) returns (DeleteVolumeResponse) {}
 }
 
 enum Status {
@@ -49,4 +62,28 @@ message GetVolumesResponse {
     repeated CreateLVMVolumeResponse volumes = 1;
     Status status = 2;
     string message = 3;
+}
+
+message GetVolumeInfoRequest {
+    string volume_group = 1;
+    string volume_name = 2;
+}
+message GetVolumeInfoResponse {
+    string volume_group = 1;    // Name of the Volume Group (VG)
+    string volume_relative_path = 2; // Relative path of the volume within VG
+    string volume_absolute_path = 3; // Absolute path of the volume
+    string brick_path = 4;           // Mount point or specific brick path
+    uint64 size = 5;                 // Total size of the volume in bytes
+    uint64 free_size = 6;            // Free space in the volume in bytes
+    uint64 allocated_size = 7;       
+}
+
+message DeleteVolumeRequest {
+    string volume_group = 1;
+    string volume_name = 2;
+}
+
+message DeleteVolumeResponse {
+    Status status = 1;
+    string message = 2;
 }

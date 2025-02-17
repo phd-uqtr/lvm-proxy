@@ -374,11 +374,24 @@ func lv_from_N(vg *C.struct_volume_group, id *C.char, pvg *VgObject, f func(*C.s
 
 // TODO: test
 // LvFromName returns LV object from name of VG.
-func (v *VgObject) LvFromName(sname string) (*LvObject, error) {
+func (v *VgObject) LvFromVgName(sname string) (*LvObject, error) {
 	name := C.CString(sname)
 	return lv_from_N(v.Vgt, name, v, func(vg *C.struct_volume_group, id *C.char) C.lv_t {
 		return C.lvm_lv_from_name(vg, name)
 	})
+}
+
+// LvFromName returns LV object from name of LV.
+func (v *VgObject) LvFromName(lvname string) (*LvObject, error) {
+	name := C.CString(lvname)
+	lvt := C.lvm_lv_from_name(v.Vgt, name)
+	if lvt == nil {
+		return nil, fmt.Errorf("volume not found")
+	}
+	return &LvObject{
+		parentVG: v,
+		Lvt:      lvt,
+	}, nil
 }
 
 // LvFromUuid returns LV object from UUID of VG.
@@ -730,4 +743,14 @@ func getLastError() error {
 		return fmt.Errorf("unknown error")
 	}
 	return fmt.Errorf(msg)
+}
+
+func VgExists(vgName string, mode string) (bool, *VgObject) {
+	vgo := &VgObject{}
+	vgt := VgOpen(vgName, mode)
+	if vgt == nil {
+		return false, nil
+	}
+	vgo.Vgt = vgt
+	return true, vgo
 }
