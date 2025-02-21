@@ -1,5 +1,5 @@
 #include <libdevmapper.h>
-#include <lvm2app.h>
+#include "lvm2app.h"
 #include <stdio.h>
 
 typedef char *names[];
