@@ -181,16 +181,16 @@ func (lvmApi *LvmProxyApi) DeleteVolume(vgName, lvName string) error {
 
 	// Check if lv is mounted
 	lvPath := path.Join("/dev/mapper", fmt.Sprintf("%s-%s", vgName, lvName))
-	isMounted := IsVolumeMounted(lvPath)
-	if !isMounted {
-		return lvo.Remove()
-	}
+	// isMounted := IsVolumeMounted(lvPath)
+	// if !isMounted {
+	// 	return lvo.Remove()
+	// }
 	// unmout first and remove folder\
-	mountPath := lvmApi.GetVolumeMountPath(vgName, lvName)
-	err = Unmount(mountPath)
+	err = Unmount(lvPath)
 	if err != nil {
 		return err
 	}
+	mountPath := lvmApi.GetVolumeMountPath(vgName, lvName)
 	err = os.RemoveAll(mountPath)
 	if err != nil {
 		return fmt.Errorf("failed to remove %s: %v", mountPath, err)
