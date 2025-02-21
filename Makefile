@@ -4,7 +4,7 @@ gen:
     server/pb/server.proto
 
 build_all:
-	go build --ldflags '-extldflags "-static"' -o ./bin/main main.go
+	go build -o ./bin/main main.go
 run: build_all
 	sudo ./bin/main
 
